@@ -37,8 +37,8 @@ void md5HashFromFile(std::string filename, unsigned char* out)
       printf("\x1b[s\n%d/100\x1b[u", percent);
       consoleUpdate(NULL);
     }
-    mbedtls_md5_finish_ret (&md5Context, out);
     fclose(inFile);
+    mbedtls_md5_finish_ret (&md5Context, out);
     return;
 }
 
@@ -90,6 +90,12 @@ void copy(const char* from, const char* to, bool exfat = false)
     //u64 bufSize = 0x8000000;
     u64 bufSize = 0x0F0F0F0F;
 
+    AppletType at = appletGetAppletType();
+    if (at != AppletType_Application && at != AppletType_SystemApplication)
+    {
+      printf("\nNo applet mode >:(\nYou must override Smash for this application to work properly.\nHold 'R' while launching Smash to do so.");
+      return;
+    }
     if(runningTID() != smashTID)
     {
       printf("\nYou must override Smash for this application to work properly.\nHold 'R' while launching Smash to do so.");
@@ -98,8 +104,7 @@ void copy(const char* from, const char* to, bool exfat = false)
     std::ifstream source(from, std::ifstream::binary);
     if(source.fail())
     {
-      printf ("\nThe data.arc file can not be opened.");
-	    printf ("\nCheck that the file exists in the proper directory");
+      printf ("\nThe romfs could not be read.");
 	    return;
     }
     source.seekg(0, std::ios::end);
@@ -144,7 +149,6 @@ void copy(const char* from, const char* to, bool exfat = false)
         bufSize = size-sizeWritten;
         buf = new char[bufSize];
       }
-
 
       /* Broken automatic fat32 detection
       if(!FSChecked && sizeWritten > fat32Max)
@@ -210,9 +214,7 @@ void copy(const char* from, const char* to, bool exfat = false)
       consoleUpdate(NULL);
     }
     delete[] buf;
-    //printf("\n");
 }
-
 int main(int argc, char **argv)
 {
     consoleInit(NULL);
@@ -230,11 +232,8 @@ int main(int argc, char **argv)
     while(appletMainLoop())
     {
         hidScanInput();
-
         u64 kDown = hidKeysDown(CONTROLLER_P1_AUTO);
-
         if (kDown & KEY_PLUS) break; // break in order to return to hbmenu
-
         if (kDown & KEY_X)
         {
           if(fileExists(outPath))
@@ -272,7 +271,6 @@ int main(int argc, char **argv)
           appletSetMediaPlaybackState(false);
           romfsUnmount("romfs");
           u64 endTime = std::time(0);
-
           done = true;  // So you don't accidentally dump twice
           printf("\nCompleted in %.2f minutes.", (float)(endTime - startTime)/60);
           printf("\nOptional: Press 'X' generate an MD5 hash of the file");
